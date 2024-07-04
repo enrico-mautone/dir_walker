@@ -5,18 +5,45 @@ from rich.tree import Tree
 
 console = Console()
 
+def format_size(size):
+    """Return size in bytes, KB, and MB if size is greater than 0."""
+    if size == 0:
+        return ""
+    kb_size = size / 1024
+    mb_size = kb_size / 1024
+    parts = [f"{size} bytes"]
+    if kb_size >= 1:
+        parts.append(f"{kb_size:.2f} KB")
+    if mb_size >= 1:
+        parts.append(f"{mb_size:.2f} MB")
+    return " - ".join(parts)
+
+def get_directory_size(path):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(path):
+        for filename in filenames:
+            fp = os.path.join(dirpath, filename)
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+    return total_size
+
 def display_directory_tree(path):
-    tree = Tree(path, guide_style="bold bright_blue")
+    dir_size = get_directory_size(path)
+    size_str = format_size(dir_size)
+    tree = Tree(f"{path} {f'({size_str})' if size_str else ''}", guide_style="bold bright_blue")
 
     def add_directory(tree, path):
         for item in sorted(os.listdir(path)):
             full_path = os.path.join(path, item)
             if os.path.isdir(full_path):
-                branch = tree.add(f"[bold magenta]{item}/[/bold magenta]")
+                dir_size = get_directory_size(full_path)
+                size_str = format_size(dir_size)
+                branch = tree.add(f"[bold magenta]{item}/[/bold magenta] {f'({size_str})' if size_str else ''}")
                 add_directory(branch, full_path)
             else:
                 size = os.path.getsize(full_path)
-                tree.add(f"[bold green]{item}[/bold green] {size} bytes")
+                size_str = format_size(size)
+                tree.add(f"[bold green]{item}[/bold green] {f'({size_str})' if size_str else ''}")
 
     add_directory(tree, path)
     console.print(tree)
