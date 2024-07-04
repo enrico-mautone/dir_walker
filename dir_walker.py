@@ -54,7 +54,7 @@ def cli():
 
     while True:
         command = console.input(f"[bold cyan]Current path: {current_path}[/bold cyan]\n"
-                                "[bold cyan]Command ([/bold cyan][yellow]cd[/yellow] [bold cyan]path, [bold cyan][yellow]..[/yellow][bold cyan], [bold cyan][yellow]go[/yellow][bold cyan], [bold cyan][yellow]exit[/yellow][bold cyan]): [/bold cyan]")
+                                "[bold cyan]Command ([/bold cyan][yellow]cd[/yellow] [bold cyan]path, [bold cyan][yellow]..[/yellow][bold cyan], [bold cyan][yellow]go[/yellow][bold cyan], [bold cyan][yellow]cls[/yellow][bold cyan], [bold cyan][yellow]exit[/yellow][bold cyan]): [/bold cyan]")
 
         if command.startswith("cd "):
             new_path = command[3:].strip()
@@ -72,11 +72,13 @@ def cli():
                 console.print(f"[bold red]Error:[/bold red] '{parent_path}' is not a valid directory")
         elif command == "go":
             display_directory_tree(current_path)
+        elif command == "cls":
+            console.clear()
         elif command == "exit":
             console.print("[bold cyan]Exiting...[/bold cyan]")
             break
         else:
-            console.print("[bold red]Invalid command.[/bold red] Please use 'cd <path>', '..', 'go', or 'exit' to exit.")
+            console.print("[bold red]Invalid command.[/bold red] Please use 'cd <path>', '..', 'go', 'cls', or 'exit' to exit.")
 
 if __name__ == '__main__':
     cli()
