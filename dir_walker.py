@@ -1,6 +1,7 @@
 import os
 import click
 from rich.console import Console
+from rich.progress import Progress, track
 from rich.tree import Tree
 
 console = Console()
@@ -28,25 +29,45 @@ def get_directory_size(path):
     return total_size
 
 def display_directory_tree(path, only_dirs=False):
-    dir_size = get_directory_size(path)
-    size_str = format_size(dir_size)
-    tree = Tree(f"{path} {f'({size_str})' if size_str else ''}", guide_style="bold bright_blue")
+    try:
+        total_items = sum([len(files) + len(dirs) for _, dirs, files in os.walk(path)])
+        with Progress() as progress:
+            task = progress.add_task("[cyan]Analysing directory...", total=total_items)
 
-    def add_directory(tree, path):
-        for item in sorted(os.listdir(path)):
+            dir_size = get_directory_size(path)
+            size_str = format_size(dir_size)
+            tree = Tree(f"{path} {f'({size_str})' if size_str else ''}", guide_style="bold bright_blue")
+
+            def add_directory(tree, path):
+                for item in sorted(os.listdir(path)):
+                    full_path = os.path.join(path, item)
+                    if os.path.isdir(full_path):
+                        dir_size = get_directory_size(full_path)
+                        size_str = format_size(dir_size)
+                        branch = tree.add(f"[bold magenta]{item}/[/bold magenta] {f'({size_str})' if size_str else ''}")
+                        add_directory(branch, full_path)
+                    elif not only_dirs:
+                        size = os.path.getsize(full_path)
+                        size_str = format_size(size)
+                        tree.add(f"[bold green]{item}[/bold green] {f'({size_str})' if size_str else ''}")
+                    progress.update(task, advance=1)
+
+            add_directory(tree, path)
+            console.print(tree)
+    except PermissionError:
+        console.print("[bold red]Non hai i diritti di accesso alla cartella specificata[/bold red]")
+
+def list_current_directory(path):
+    try:
+        items = sorted(os.listdir(path))
+        for item in items:
             full_path = os.path.join(path, item)
             if os.path.isdir(full_path):
-                dir_size = get_directory_size(full_path)
-                size_str = format_size(dir_size)
-                branch = tree.add(f"[bold magenta]{item}/[/bold magenta] {f'({size_str})' if size_str else ''}")
-                add_directory(branch, full_path)
-            elif not only_dirs:
-                size = os.path.getsize(full_path)
-                size_str = format_size(size)
-                tree.add(f"[bold green]{item}[/bold green] {f'({size_str})' if size_str else ''}")
-
-    add_directory(tree, path)
-    console.print(tree)
+                console.print(f"[bold magenta]{item}/[/bold magenta]")
+            else:
+                console.print(f"[bold green]{item}[/bold green]")
+    except PermissionError:
+        console.print("[bold red]Non hai i diritti di accesso alla cartella specificata[/bold red]")
 
 @click.command()
 def cli():
@@ -54,7 +75,7 @@ def cli():
 
     while True:
         command = console.input(f"[bold cyan]Current path: {current_path}[/bold cyan]\n"
-                                "[bold cyan]Command ([/bold cyan][yellow]cd[/yellow] [bold cyan]path, [bold cyan][yellow]..[/yellow][bold cyan], [bold cyan][yellow]go[/yellow][bold cyan] [dim yellow]-d[/dim yellow], [bold cyan][yellow]cls[/yellow][bold cyan], [bold cyan][yellow]exit[/yellow][bold cyan]): [/bold cyan]")
+                                "[bold cyan]Command ([/bold cyan][yellow]cd[/yellow] [bold cyan]path, [bold cyan][yellow]..[/yellow][bold cyan], [bold cyan][yellow]go[/yellow][bold cyan] [dim yellow]-d[/dim yellow], [bold cyan][yellow]ls[/yellow][bold cyan], [bold cyan][yellow]cls[/yellow][bold cyan], [bold cyan][yellow]exit[/yellow][bold cyan]): [/bold cyan]")
 
         if command.startswith("cd "):
             new_path = command[3:].strip()
@@ -73,13 +94,15 @@ def cli():
         elif command.startswith("go"):
             only_dirs = "-d" in command
             display_directory_tree(current_path, only_dirs)
+        elif command == "ls":
+            list_current_directory(current_path)
         elif command == "cls":
             console.clear()
         elif command == "exit":
             console.print("[bold cyan]Exiting...[/bold cyan]")
             break
         else:
-            console.print("[bold red]Invalid command.[/bold red] Please use 'cd <path>', '..', 'go [-d]', 'cls', or 'exit' to exit.")
+            console.print("[bold red]Invalid command.[/bold red] Please use 'cd <path>', '..', 'go [-d]', 'ls', 'cls', or 'exit' to exit.")
 
 if __name__ == '__main__':
     cli()
